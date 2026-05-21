@@ -1,8 +1,4 @@
-// server.js
-// Simple CORS proxy + tiny GUI for Render
-
 const express = require("express");
-
 const app = express();
 const PORT = process.env.PORT || 3000;
 
@@ -18,7 +14,7 @@ app.get("/", (req, res) => {
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Wordle Fetcher</title>
+    <title>NYT Fetcher</title>
     <style>
         body {
             font-family: Arial;
@@ -31,6 +27,7 @@ app.get("/", (req, res) => {
             padding: 10px 20px;
             font-size: 16px;
             cursor: pointer;
+            margin-right: 10px;
         }
 
         pre {
@@ -43,34 +40,44 @@ app.get("/", (req, res) => {
     </style>
 </head>
 <body>
-    <h1>NYT Wordle Fetcher</h1>
 
-    <button onclick="getAnswer()">Fetch Answer</button>
+    <h1>NYT Puzzle Fetcher</h1>
+
+    <button onclick="getWordle()">Wordle</button>
+    <button onclick="getConnections()">Connections</button>
 
     <pre id="output">Waiting...</pre>
 
     <script>
-        async function getAnswer() {
-            const output = document.getElementById("output");
 
+        async function show(res) {
+            const output = document.getElementById("output");
             output.textContent = "Loading...";
 
             try {
-                const res = await fetch("/answer");
-                const data = await res.json();
-
+                const data = await res;
                 output.textContent = JSON.stringify(data, null, 2);
             } catch (err) {
                 output.textContent = err.toString();
             }
         }
+
+        function getWordle() {
+            show(fetch("/answer").then(r => r.json()));
+        }
+
+        function getConnections() {
+            show(fetch("/connections").then(r => r.json()));
+        }
+
     </script>
+
 </body>
 </html>
     `);
 });
 
-// Proxy endpoint
+// ---------------- WORDLE ----------------
 app.get("/answer", async (req, res) => {
     try {
         const today = new Date().toISOString().split("T")[0];
@@ -78,7 +85,6 @@ app.get("/answer", async (req, res) => {
         const url = `https://www.nytimes.com/svc/wordle/v2/${today}.json`;
 
         const response = await fetch(url);
-
         const data = await response.json();
 
         res.json({
@@ -95,6 +101,31 @@ app.get("/answer", async (req, res) => {
     }
 });
 
+// ---------------- CONNECTIONS (NEW) ----------------
+app.get("/connections", async (req, res) => {
+    try {
+        const today = new Date().toISOString().split("T")[0];
+
+        const url = `https://www.nytimes.com/svc/connections/v2/${today}.json`;
+
+        const response = await fetch(url);
+        const data = await response.json();
+
+        res.json({
+            success: true,
+            categories: data.categories,
+            full: data
+        });
+
+    } catch (err) {
+        res.status(500).json({
+            success: false,
+            error: err.toString()
+        });
+    }
+});
+
+// ---------------- START SERVER ----------------
 app.listen(PORT, () => {
     console.log("Server running on port " + PORT);
 });
